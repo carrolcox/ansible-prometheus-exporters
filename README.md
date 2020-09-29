@@ -15,6 +15,9 @@ Download, setup and run various Prometheus exporters as systemd unit for VM and 
 - [postgres_exporter](https://github.com/wrouesnel/postgres_exporter)
 - [rabbitmq_exporter](https://github.com/kbudde/rabbitmq_exporter)
 - [redis_exporter](https://github.com/oliver006/redis_exporter)
+- [nginx_exporter](https://github.com/nginxinc/nginx-prometheus-exporter)
+- [json_exporter](https://github.com/prometheus-community/json_exporter)
+
 
 ### Template for sample_exporter
 
@@ -24,12 +27,17 @@ Download, setup and run various Prometheus exporters as systemd unit for VM and 
 exporter:
   ## uri default combined as: "{{ item.repo }}/releases/download/v{{ item.version }}/{{ item.name }}-{{ item.version }}.{{ item.platform }}.tar.gz"
   ## uri with package name combined as: "{{ item.repo }}/releases/download/v{{ item.version }}/{{ item.package }}.tar.gz"
+  ## binary_path default combined as:
+  ##   "{{ item.name }}-{{ item.version }}.{{ item.platform }}/{{ item.name }}" without package and single=false
+  ##   "{{ item.package }}/{{ item.name }}" with package and single=false
+  ##   "{{ item.name }}" if single=true an
   - name: # sample_exporter
     description: # 'Sample metric exporter for Prometheus'
     alias: # sample-exporter
     run_user: # sample run user, default is 'prometheus'
     repo: # sample repo url https://github.com/sample/sample_exporter
     package: # sample_exporter archive name if conflict with uri default combined
+    binary_path: # sample_exporter binary path inside archive if conflict with binary_path default combined
     single: # yes if single binary file
     version: # sample_exporter version
     platform: # linux-amd64
@@ -81,6 +89,7 @@ default_exporters:
           - postgres
           - rabbitmq
           - redis
+          - nginx
 ```
 
 ## License

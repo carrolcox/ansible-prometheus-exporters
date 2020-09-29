@@ -6,7 +6,7 @@
   check_mode: false
   register: current_exporter_binary
 
-- name: exporters | download | Check version
+- name: exporters | download | Check current version
   shell: |
     sudo -Hu nobody timeout 2 {{ item.bin_dir | d(exporters_bin_dir) }}/{{ item.name }} --version 2>&1 | grep -iE '({{ item.name }}|version)' | grep -Eoi '([0-9]{1,}\.){1,3}[0-9]{1,}(|-[a-z0-9\.]{1,})' | sort -uV | head -1
   args:
@@ -17,6 +17,10 @@
   when:
     - current_exporter_binary.stat.exists
 
+- name: exporters | download | Format current version
+  set_fact:
+    current_exporter_binary_version: "{% if current_exporter_binary.stat.exists %}{{ current_exporter_binary_version.stdout | d(false) }}{% else %}False{% endif %}"
+
 - name: exporters | download | Create tmp directory
   file:
     path: "{{ exporters_tmp_dir }}"
@@ -25,53 +29,54 @@
     group: root
     mode: 0755
   when:
-    - not current_exporter_binary.stat.exists or current_exporter_binary_version.stdout is version(item.version, '!=')
+    - not current_exporter_binary_version or current_exporter_binary_version is version(item.version, '!=')
 
 - name: exporters | download | url w/o package name
   set_fact:
     current_exporter_download_url: "{{ item.repo }}/releases/download/v{{ item.version }}/{{ item.name }}-{{ item.version }}.{{ item.platform }}.tar.gz"
   when:
     - item.package is not defined
-    - not current_exporter_binary.stat.exists or current_exporter_binary_version.stdout is version(item.version, '!=')
+    - not current_exporter_binary_version or current_exporter_binary_version is version(item.version, '!=')
 
 - name: exporters | download | url with package name
   set_fact:
     current_exporter_download_url: "{{ item.repo }}/releases/download/v{{ item.version }}/{{ item.package }}.tar.gz"
   when:
     - item.package is defined
-    - not current_exporter_binary.stat.exists or (current_exporter_binary_version.stdout and current_exporter_binary_version.stdout is version(item.version, '<'))
+    - not current_exporter_binary_version or current_exporter_binary_version is version(item.version, '<')
+
+- name: exporters | download | downloaded binary set directly
+  set_fact:
+    current_exporter_download_binary: "{{ item.binary_path }}"
+  when:
+    - item.binary_path is defined
+    - not current_exporter_binary_version or current_exporter_binary_version is version(item.version, '!=')
 
 - name: exporters | download | downloaded binary w/o package name
   set_fact:
     current_exporter_download_binary: "{{ item.name }}-{{ item.version }}.{{ item.platform }}/{{ item.name }}"
   when:
+    - item.binary_path is not defined
     - item.package is not defined
     - item.single is not defined or not item.single | bool
-    - not current_exporter_binary.stat.exists or current_exporter_binary_version.stdout is version(item.version, '!=')
+    - not current_exporter_binary_version or current_exporter_binary_version is version(item.version, '!=')
 
 - name: exporters | download | downloaded binary with package name
   set_fact:
     current_exporter_download_binary: "{{ item.package }}/{{ item.name }}"
   when:
+    - item.binary_path is not defined
     - item.package is defined
     - item.single is not defined or not item.single | bool
-    - not current_exporter_binary.stat.exists or current_exporter_binary_version.stdout is version(item.version, '!=')
+    - not current_exporter_binary_version or current_exporter_binary_version is version(item.version, '!=')
 
-- name: exporters | download | downloaded binary w/o package name and single file
+- name: exporters | download | downloaded binary single file
   set_fact:
     current_exporter_download_binary: "{{ item.name }}"
   when:
-    - item.package is not defined
+    - item.binary_path is not defined
     - item.single is defined and item.single | bool
-    - not current_exporter_binary.stat.exists or current_exporter_binary_version.stdout is version(item.version, '!=')
-
-- name: exporters | download | downloaded binary with package name and single file
-  set_fact:
-    current_exporter_download_binary: "{{ item.name }}"
-  when:
-    - item.package is defined
-    - item.single is defined and item.single | bool
-    - not current_exporter_binary.stat.exists or current_exporter_binary_version.stdout is version(item.version, '!=')
+    - not current_exporter_binary_version or current_exporter_binary_version is version(item.version, '!=')
 
 - name: exporters | download | Get exporter
   unarchive:
